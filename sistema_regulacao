@@ -1,0 +1,136 @@
+import sqlite3
+from datetime import datetime, date
+
+# Conectar ou criar banco de dados
+conn = sqlite3.connect("nra_marilia.db")
+cursor = conn.cursor()
+
+# ------------------------------
+# Criar tabelas
+# ------------------------------
+
+# Pacientes
+cursor.execute("""
+CREATE TABLE IF NOT EXISTS pacientes (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    nome TEXT NOT NULL,
+    cpf TEXT UNIQUE NOT NULL,
+    data_nascimento TEXT NOT NULL,
+    endereco TEXT
+)
+""")
+
+# Exames
+cursor.execute("""
+CREATE TABLE IF NOT EXISTS exames (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    nome TEXT NOT NULL,
+    categoria TEXT,
+    nivel_gravidade TEXT
+)
+""")
+
+# Unidades de Saúde
+cursor.execute("""
+CREATE TABLE IF NOT EXISTS unidades (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    nome TEXT NOT NULL,
+    endereco TEXT,
+    capacidade_exames INTEGER
+)
+""")
+
+# Solicitações de exames
+cursor.execute("""
+CREATE TABLE IF NOT EXISTS solicitacoes (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    paciente_id INTEGER NOT NULL,
+    exame_id INTEGER NOT NULL,
+    unidade_id INTEGER NOT NULL,
+    data_hora TEXT NOT NULL,
+    status TEXT DEFAULT 'Pendente',
+    FOREIGN KEY(paciente_id) REFERENCES pacientes(id),
+    FOREIGN KEY(exame_id) REFERENCES exames(id),
+    FOREIGN KEY(unidade_id) REFERENCES unidades(id)
+)
+""")
+
+# Usuários
+cursor.execute("""
+CREATE TABLE IF NOT EXISTS usuarios (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    nome TEXT NOT NULL,
+    perfil TEXT NOT NULL,
+    email TEXT UNIQUE NOT NULL,
+    senha TEXT NOT NULL
+)
+""")
+
+conn.commit()
+
+# ------------------------------
+# Inserir dados de teste
+# ------------------------------
+
+# Pacientes
+cursor.execute("INSERT OR IGNORE INTO pacientes (nome, cpf, data_nascimento, endereco) VALUES (?, ?, ?, ?)",
+               ("João Silva", "12345678900", "1980-05-12", "Rua A, Marília-SP"))
+cursor.execute("INSERT OR IGNORE INTO pacientes (nome, cpf, data_nascimento, endereco) VALUES (?, ?, ?, ?)",
+               ("Maria Oliveira", "98765432100", "1995-10-20", "Rua B, Marília-SP"))
+
+# Exames
+cursor.execute("INSERT OR IGNORE INTO exames (nome, categoria, nivel_gravidade) VALUES (?, ?, ?)",
+               ("Hemograma Completo", "Laboratorial", "Baixo"))
+cursor.execute("INSERT OR IGNORE INTO exames (nome, categoria, nivel_gravidade) VALUES (?, ?, ?)",
+               ("Tomografia Computadorizada", "Imagem", "Alto"))
+
+# Unidades de Saúde
+cursor.execute("INSERT OR IGNORE INTO unidades (nome, endereco, capacidade_exames) VALUES (?, ?, ?)",
+               ("Hospital Regional Marília", "Av. Central, 1000, Marília-SP", 100))
+cursor.execute("INSERT OR IGNORE INTO unidades (nome, endereco, capacidade_exames) VALUES (?, ?, ?)",
+               ("Clínica Saúde Marília", "Rua Saúde, 500, Marília-SP", 50))
+
+# Solicitações de exames
+cursor.execute("""INSERT OR IGNORE INTO solicitacoes (paciente_id, exame_id, unidade_id, data_hora)
+                  VALUES (?, ?, ?, ?)""",
+               (1, 1, 1, "2025-09-20 08:30"))
+cursor.execute("""INSERT OR IGNORE INTO solicitacoes (paciente_id, exame_id, unidade_id, data_hora)
+                  VALUES (?, ?, ?, ?)""",
+               (2, 2, 2, "2025-09-21 14:00"))
+
+conn.commit()
+
+# ------------------------------
+# Consulta: Exames com Pacientes
+# ------------------------------
+
+print("=== Lista de Exames Agendados ===\n")
+
+query = """
+SELECT p.nome AS paciente,
+       (strftime('%Y', 'now') - strftime('%Y', p.data_nascimento)) AS idade,
+       e.nome AS exame,
+       e.nivel_gravidade,
+       s.data_hora,
+       u.nome AS unidade
+FROM solicitacoes s
+JOIN pacientes p ON s.paciente_id = p.id
+JOIN exames e ON s.exame_id = e.id
+JOIN unidades u ON s.unidade_id = u.id
+ORDER BY s.data_hora
+"""
+
+cursor.execute(query)
+resultados = cursor.fetchall()
+
+for row in resultados:
+    print(f"Paciente: {row[0]}")
+    print(f"Idade: {row[1]} anos")
+    print(f"Exame: {row[2]}")
+    print(f"Nível de Gravidade: {row[3]}")
+    print(f"Data/Hora: {row[4]}")
+    print(f"Local: {row[5]}")
+    print("-" * 30)
+
+# Fechar conexão
+conn.close()

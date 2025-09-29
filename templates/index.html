@@ -1,0 +1,42 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <title>Assistente de Agendamento</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+<h2>Assistente de Agendamento</h2>
+<div id="chatbox"></div>
+
+<input type="text" id="userInput" placeholder="Digite sua mensagem...">
+<button onclick="sendMessage()">Enviar</button>
+
+<script>
+function sendMessage() {
+    const input = document.getElementById("userInput");
+    const msg = input.value.trim();
+    if (!msg) return;
+    input.value = "";
+
+    const chatbox = document.getElementById("chatbox");
+    chatbox.innerHTML += `<div class="message user"><b>Você:</b> ${msg}</div>`;
+
+    fetch("/chat", {
+        method: "POST",
+        headers: { "Content-Type": "application/x-www-form-urlencoded" },
+        body: `message=${encodeURIComponent(msg)}`
+    })
+    .then(res => res.json())
+    .then(data => {
+        chatbox.innerHTML += `<div class="message bot"><b>Assistente:</b> ${data.response}</div>`;
+        chatbox.scrollTop = chatbox.scrollHeight;
+    });
+}
+
+document.getElementById("userInput").addEventListener("keypress", function(e) {
+    if (e.key === "Enter") sendMessage();
+});
+</script>
+</body>
+</html>
